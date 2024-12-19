@@ -127,20 +127,21 @@ def obtain_engine_config() -> pl.GPUEngine | Literal["cpu"]:
 
 def run_query(query_number: int, lf: pl.LazyFrame) -> None:
     streaming = settings.run.polars_streaming
+    new_streaming = settings.run.polars_new_streaming
     eager = settings.run.polars_eager
     gpu = settings.run.polars_gpu
 
-    if (eager or streaming) and gpu:
-        msg = "polars-gpu engine does not support eager or streaming"
+    if sum([eager, streaming, new_streaming, gpu]) > 1:
+        msg = "Please specify at most one of eager, streaming, new_streaming or gpu"
         raise ValueError(msg)
     if settings.run.polars_show_plan:
-        print(lf.explain(streaming=streaming, optimized=eager))
+        print(lf.explain(streaming=streaming, new_streaming=new_streaming, optimized=eager))
 
     engine = obtain_engine_config()
     # Eager load engine backend, so we don't time that.
     _preload_engine(engine)
     query = partial(
-        lf.collect, streaming=streaming, no_optimization=eager, engine=engine
+        lf.collect, streaming=streaming, new_streaming=new_streaming, no_optimization=eager, engine=engine
     )
 
     if gpu:
